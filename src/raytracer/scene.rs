@@ -12,8 +12,10 @@ fn background_color(ray: &Ray) -> (u8, u8, u8) {
     let unit_x = Vec3::new(1.0, 0.0, 0.0);
     let unit_y = Vec3::new(0.0, 1.0, 0.0);
 
-    let dot_x = 1.0 + Vec3::dot_product(&unit_x, ray.direction()) / 2.0;
-    let dot_y = 1.0 + Vec3::dot_product(&unit_y, ray.direction()) / 2.0;
+    let dot_divide = 1.0 / 2.0;
+
+    let dot_x = 1.0 + Vec3::dot_product(&unit_x, ray.direction()) * dot_divide;
+    let dot_y = 1.0 + Vec3::dot_product(&unit_y, ray.direction()) * dot_divide;
 
     let r = (dot_x * 100.0).min(255.0);
     let g = (dot_x * 100.0).min(255.0);
@@ -75,9 +77,11 @@ impl Scene {
                     closest_normal.normalize();
                     let reflection = reflect(&-ray.direction(), &closest_normal);
 
-                    let mut final_color_r = o_r as f32 * (1.0 - reflection_factor);
-                    let mut final_color_g = o_g as f32 * (1.0 - reflection_factor);
-                    let mut final_color_b = o_b as f32 * (1.0 - reflection_factor);
+                    let inverse_reflection_factor = 1.0 - reflection_factor;
+
+                    let mut final_color_r = o_r as f32 * inverse_reflection_factor;
+                    let mut final_color_g = o_g as f32 * inverse_reflection_factor;
+                    let mut final_color_b = o_b as f32 * inverse_reflection_factor;
 
                     if max_iter > 0 {
                         let (hit, reflected_r, reflected_g, reflected_b) = self.trace(
@@ -125,6 +129,6 @@ impl Scene {
                 let (r, g, b) = background_color(&ray);
                 (closest_hit, r, g, b)
             }
-        }
+        }        
     }
 }

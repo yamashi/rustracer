@@ -4,11 +4,13 @@ mod raytracer;
 extern crate minifb;
 extern crate png;
 extern crate rand;
+extern crate rayon;
 
 use minifb::{Key, Scale, Window, WindowOptions};
 use std::fs::File;
 use std::io::BufWriter;
 use std::path::Path;
+use std::sync::{Arc, Mutex};
 // To use encoder.set()
 use rand::Rng;
 use raytracer::camera::Camera;
@@ -19,8 +21,12 @@ use raytracer::textured_sphere::TexturedSphere;
 use raytracer::vec3::Vec3;
 use std::time::Instant;
 
+use rayon::prelude::*;
+
 const WIDTH: usize = 1920;
 const HEIGHT: usize = 1080;
+const WIDTH_DIV: f32 = (1.0 / WIDTH as f32);
+const HEIGHT_DIV: f32 = (1.0 / HEIGHT as f32);
 const BOX_SIDE: usize = 96;
 const MAX_ITERATION: u32 = 5;
 const RAY_PER_PIXEL: u32 = 100;
@@ -91,7 +97,6 @@ fn main() {
             random_offsets[i] = rng.next_f32() * 2.0 - 1.0;
         }
     }
-    let mut random_offset = 0usize;
 
     let box_count_x: usize = WIDTH / BOX_SIDE + if WIDTH % BOX_SIDE != 0 { 1 } else { 0 };
     let box_count_y: usize = HEIGHT / BOX_SIDE + if HEIGHT % BOX_SIDE != 0 { 1 } else { 0 };
@@ -101,7 +106,7 @@ fn main() {
 
     let start = Instant::now();
 
-    for i in boxes.iter() {
+    let result: Vec<_> = boxes.par_iter().map(|i| -> (usize, usize, Vec<u32>) {
         let x = i % box_count_x;
         let y = i / box_count_x;
 
@@ -111,18 +116,22 @@ fn main() {
         let max_x = (min_x + BOX_SIDE).min(WIDTH);
         let max_y = (min_y + BOX_SIDE).min(HEIGHT);
 
+        let mut tmp_buffer: Vec<u32> = vec![0; BOX_SIDE * BOX_SIDE];
+
+        let mut random_offset = 0usize;
+
         for y in min_y..max_y {
             for x in min_x..max_x {
                 let mut color_r = 0u32;
                 let mut color_g = 0u32;
                 let mut color_b = 0u32;
+                
+
                 for i in 0..RAY_PER_PIXEL {
-                    let factor_x = (x as f32 + random_offsets[random_offset + 0]) / WIDTH as f32;
-                    let factor_y = (y as f32 + random_offsets[random_offset + 1]) / HEIGHT as f32;
+                    let factor_x = (x as f32 + random_offsets[random_offset + 0]) * WIDTH_DIV;
+                    let factor_y = (y as f32 + random_offsets[random_offset + 1]) * HEIGHT_DIV;
                     random_offset += 2;
-                    if random_offset >= random_offsets.len() {
-                        random_offset = 0;
-                    }
+                    random_offset %= RANDOM_OFFSET_COUNT;
 
                     let ray = camera.get_ray(factor_x, factor_y);
                     let (_, r, g, b) = scene.trace(ray, MAX_ITERATION);
@@ -132,15 +141,35 @@ fn main() {
                     color_b += b as u32;
                 }
 
+                let y_index = y - min_y;
+                let x_index = x - min_x;
+
                 color_r /= RAY_PER_PIXEL;
                 color_g /= RAY_PER_PIXEL;
                 color_b /= RAY_PER_PIXEL;
-                buffer[(y * WIDTH + x) as usize] =
-                    color(color_r as u8, color_g as u8, color_b as u8);
+
+                tmp_buffer[(y_index * BOX_SIDE + x_index) as usize] = color(color_r as u8, color_g as u8, color_b as u8);
             }
         }
 
-        window.update_with_buffer(&buffer).unwrap();
+        (min_x, min_y, tmp_buffer)
+    }).collect();
+
+    for (x,y,vec) in result {
+        let min_x = x;
+        let min_y = y;
+
+        let max_x = (min_x + BOX_SIDE).min(WIDTH);
+        let max_y = (min_y + BOX_SIDE).min(HEIGHT);
+
+        for y in min_y..max_y {
+            for x in min_x..max_x {
+                let y_index = y - min_y;
+                let x_index = x - min_x;
+
+                buffer[(y * WIDTH + x) as usize] = vec[(y_index * BOX_SIDE + x_index) as usize];
+            }
+        }
     }
 
     let duration = start.elapsed();
