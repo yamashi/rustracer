@@ -10,7 +10,6 @@ use minifb::{Key, Scale, Window, WindowOptions};
 use std::fs::File;
 use std::io::BufWriter;
 use std::path::Path;
-use std::sync::{Arc, Mutex};
 // To use encoder.set()
 use rand::Rng;
 use raytracer::camera::Camera;
@@ -122,10 +121,9 @@ fn main() {
 
         for y in min_y..max_y {
             for x in min_x..max_x {
-                let mut color_r = 0u32;
-                let mut color_g = 0u32;
-                let mut color_b = 0u32;
-                
+                let mut color_r = 0f32;
+                let mut color_g = 0f32;
+                let mut color_b = 0f32;
 
                 for i in 0..RAY_PER_PIXEL {
                     let factor_x = (x as f32 + random_offsets[random_offset + 0]) * WIDTH_DIV;
@@ -136,17 +134,21 @@ fn main() {
                     let ray = camera.get_ray(factor_x, factor_y);
                     let (_, r, g, b) = scene.trace(ray, MAX_ITERATION);
 
-                    color_r += r as u32;
-                    color_g += g as u32;
-                    color_b += b as u32;
+                    color_r += r;
+                    color_g += g;
+                    color_b += b;
                 }
 
                 let y_index = y - min_y;
                 let x_index = x - min_x;
 
-                color_r /= RAY_PER_PIXEL;
-                color_g /= RAY_PER_PIXEL;
-                color_b /= RAY_PER_PIXEL;
+                color_r /= RAY_PER_PIXEL as f32;
+                color_g /= RAY_PER_PIXEL as f32;
+                color_b /= RAY_PER_PIXEL as f32;
+
+                color_r *= 255.0;
+                color_g *= 255.0;
+                color_b *= 255.0;
 
                 tmp_buffer[(y_index * BOX_SIDE + x_index) as usize] = color(color_r as u8, color_g as u8, color_b as u8);
             }

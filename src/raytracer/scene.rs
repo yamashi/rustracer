@@ -8,20 +8,20 @@ pub struct Scene {
     objects: Vec<Box<dyn Hittable>>,
 }
 
-fn background_color(ray: &Ray) -> (u8, u8, u8) {
+fn background_color(ray: &Ray) -> (f32, f32, f32) {
     let unit_x = Vec3::new(1.0, 0.0, 0.0);
     let unit_y = Vec3::new(0.0, 1.0, 0.0);
 
-    let dot_divide = 1.0 / 2.0;
+    const DOT_DIVIDE: f32 = 0.5;
 
-    let dot_x = 1.0 + Vec3::dot_product(&unit_x, ray.direction()) * dot_divide;
-    let dot_y = 1.0 + Vec3::dot_product(&unit_y, ray.direction()) * dot_divide;
+    let dot_x = 1.0 + Vec3::dot_product(&unit_x, ray.direction()) * DOT_DIVIDE;
+    let dot_y = 1.0 + Vec3::dot_product(&unit_y, ray.direction()) * DOT_DIVIDE;
 
-    let r = (dot_x * 100.0).min(255.0);
-    let g = (dot_x * 100.0).min(255.0);
-    let b = (100.0 + (dot_y * 100.0)).min(255.0);
+    let r = (dot_x * 0.392).min(1.0);
+    let g = (dot_x * 0.392).min(1.0);
+    let b = (0.392 + (dot_y * 0.392)).min(1.0);
 
-    (r as u8, g as u8, b as u8)
+    (r, g, b)
 }
 
 fn reflect(r: &Vec3, n: &Vec3) -> Vec3 {
@@ -44,7 +44,7 @@ impl Scene {
         self.objects.push(object);
     }
 
-    pub fn trace(&self, ray: Ray, max_iter: u32) -> (f32, u8, u8, u8) {
+    pub fn trace(&self, ray: Ray, max_iter: u32) -> (f32, f32, f32, f32) {
         let mut closest_hit = std::f32::INFINITY;
         let mut closest_position = Vec3::zero();
         let mut closest_normal = Vec3::zero();
@@ -71,17 +71,16 @@ impl Scene {
                 let (o_r, o_g, o_b) = object.get_color(&closest_position);
 
                 let reflection_factor = object.get_reflection_factor();
+                let inverse_reflection_factor = object.get_inverse_reflection_factor();
 
-                let (mut r, mut g, mut b): (u8, u8, u8);
+                let (mut r, mut g, mut b): (f32, f32, f32);
                 if reflection_factor > 0.001 {
                     closest_normal.normalize();
                     let reflection = reflect(&-ray.direction(), &closest_normal);
 
-                    let inverse_reflection_factor = 1.0 - reflection_factor;
-
-                    let mut final_color_r = o_r as f32 * inverse_reflection_factor;
-                    let mut final_color_g = o_g as f32 * inverse_reflection_factor;
-                    let mut final_color_b = o_b as f32 * inverse_reflection_factor;
+                    let mut final_color_r = o_r * inverse_reflection_factor;
+                    let mut final_color_g = o_g * inverse_reflection_factor;
+                    let mut final_color_b = o_b * inverse_reflection_factor;
 
                     if max_iter > 0 {
                         let (hit, reflected_r, reflected_g, reflected_b) = self.trace(
@@ -89,14 +88,14 @@ impl Scene {
                             max_iter - 1,
                         );
 
-                        final_color_r += reflected_r as f32 * reflection_factor;
-                        final_color_g += reflected_g as f32 * reflection_factor;
-                        final_color_b += reflected_b as f32 * reflection_factor;
+                        final_color_r += reflected_r * reflection_factor;
+                        final_color_g += reflected_g * reflection_factor;
+                        final_color_b += reflected_b * reflection_factor;
                     }
 
-                    r = final_color_r.min(255.0) as u8;
-                    g = final_color_g.min(255.0) as u8;
-                    b = final_color_b.min(255.0) as u8;
+                    r = final_color_r.min(1.0);
+                    g = final_color_g.min(1.0);
+                    b = final_color_b.min(1.0);
                 } else {
                     r = o_r;
                     g = o_g;
@@ -116,9 +115,9 @@ impl Scene {
                         );
 
                         if dist < length {
-                            r /= 10;
-                            g /= 10;
-                            b /= 10;
+                            r /= 10.0;
+                            g /= 10.0;
+                            b /= 10.0;
                         }
                     }
                 }

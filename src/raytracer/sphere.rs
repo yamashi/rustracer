@@ -5,18 +5,24 @@ use super::vec3::Vec3;
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct Sphere {
     center: Vec3,
-    color: (u8, u8, u8),
+    color: (f32, f32, f32),
     radius: f32,
     reflection_factor: f32,
+    inverse_reflection_factor: f32
 }
 
 impl Sphere {
-    pub fn new(center: Vec3, radius: f32, color: (u8, u8, u8), reflection_factor: f32) -> Sphere {
+    pub fn new(center: Vec3, radius: f32, rbg_color: (u8, u8, u8), reflection_factor: f32) -> Sphere {
+        let inverse_reflection_factor = 1.0 - reflection_factor;
+        let (r,g,b) = rbg_color;
+        let color = (r as f32 / 255.0, g as f32 / 255.0, b as f32 / 255.0);
+
         Sphere {
             center,
             radius,
             color,
             reflection_factor,
+            inverse_reflection_factor
         }
     }
 
@@ -24,7 +30,7 @@ impl Sphere {
         self.center
     }
 
-    pub fn get_color(&self) -> (u8, u8, u8) {
+    pub fn get_color(&self) -> (f32, f32, f32) {
         self.color
     }
 
@@ -66,11 +72,15 @@ impl Hittable for Sphere {
         false
     }
 
-    fn get_color(&self, position: &Vec3) -> (u8, u8, u8) {
+    fn get_color(&self, position: &Vec3) -> (f32, f32, f32) {
         self.get_color()
     }
 
     fn get_reflection_factor(&self) -> f32 {
         self.reflection_factor
+    }
+
+    fn get_inverse_reflection_factor(&self) -> f32 {
+        self.inverse_reflection_factor
     }
 }
