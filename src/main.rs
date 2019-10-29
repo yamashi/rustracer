@@ -6,7 +6,7 @@ extern crate png;
 extern crate rand;
 extern crate rayon;
 
-use minifb::{Key, Scale, Window, WindowOptions};
+use minifb::{Key, Window, WindowOptions};
 use std::fs::File;
 use std::io::BufWriter;
 use std::path::Path;

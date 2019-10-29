@@ -72,10 +72,10 @@ impl Scene {
 
                 let reflection_factor = object.get_reflection_factor();
                 let inverse_reflection_factor = object.get_inverse_reflection_factor();
+                closest_normal.normalize();
 
                 let (mut r, mut g, mut b): (f32, f32, f32);
                 if reflection_factor > 0.001 {
-                    closest_normal.normalize();
                     let reflection = reflect(&-ray.direction(), &closest_normal);
 
                     let mut final_color_r = o_r * inverse_reflection_factor;
@@ -114,10 +114,15 @@ impl Scene {
                             max_iter - 1,
                         );
 
+                        let phong = Vec3::dot_product(&direction, &closest_normal).abs();
+                        r *= phong;
+                        g *= phong;
+                        b *= phong;
+
                         if dist < length {
-                            r /= 10.0;
-                            g /= 10.0;
-                            b /= 10.0;
+                            r *= 0.1;
+                            g *= 0.1;
+                            b *= 0.1;
                         }
                     }
                 }
